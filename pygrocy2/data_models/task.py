@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pygrocy2.base import DataModel
 from pygrocy2.data_models.user import User
-from pygrocy2.grocy_api_client import TaskCategoryDto, TaskResponse
+from pygrocy2.grocy_api_client import GrocyApiClient, TaskCategoryDto, TaskResponse
 
 
 class TaskCategory(DataModel):
@@ -45,7 +45,20 @@ class Task(DataModel):
         self._assigned_to_user = None
         if response.assigned_to_user:
             self._assigned_to_user = User(response.assigned_to_user)
-        self._userfields = response.userfields
+        # Debug: print what we're getting from the response
+        print(f"DEBUG: Task {self._id} userfields from response: {response.userfields}")
+        # Handle userfields properly - preserve the actual data
+        self._userfields = response.userfields or {}
+        print(f"DEBUG: Task {self._id} final userfields: {self._userfields}")
+
+    def get_details(self, api_client: GrocyApiClient):
+        details = api_client.get_task(self.id)
+        self.__init__(details)
+        # Only fetch userfields if they're truly missing (empty dict or None)
+        if not self._userfields:
+            fetched_userfields = api_client.get_userfields("tasks", self.id)
+            if fetched_userfields:
+                self._userfields = fetched_userfields
 
     @property
     def id(self) -> int:

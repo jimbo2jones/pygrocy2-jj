@@ -738,26 +738,10 @@ class GrocyApiClient(object):
             return SystemConfigDto(**parsed_json)
 
     def get_tasks(self, query_filters: list[str] | None = None) -> list[TaskResponse]:
-        parsed_json = self._do_get_request("tasks", query_filters)
+        parsed_json = self._do_get_request("objects/tasks", query_filters)
         if parsed_json:
-            return [TaskResponse(**data) for data in parsed_json]
+            return [TaskResponse(**response) for response in parsed_json]
         return []
-
-    def get_task(self, task_id: int) -> TaskResponse:
-        url = f"objects/tasks/{task_id}"
-        parsed_json = self._do_get_request(url)
-        return TaskResponse(**parsed_json)
-
-    def complete_task(self, task_id: int, done_time: datetime | None = None):
-        url = f"tasks/{task_id}/complete"
-
-        if done_time is None:
-            done_time = datetime.now()
-
-        localized_done_time = localize_datetime(done_time)
-
-        data = {"done_time": grocy_datetime_str(localized_done_time)}
-        self._do_post_request(url, data)
 
     def get_meal_plan(
         self, query_filters: list[str] | None = None
