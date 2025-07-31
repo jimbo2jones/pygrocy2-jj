@@ -738,10 +738,53 @@ class GrocyApiClient(object):
             return SystemConfigDto(**parsed_json)
 
     def get_tasks(self, query_filters: list[str] | None = None) -> list[TaskResponse]:
-        parsed_json = self._do_get_request("objects/tasks", query_filters)
-        if parsed_json:
-            return [TaskResponse(**response) for response in parsed_json]
+        # First, get tasks with userfields from objects/tasks
+        parsed_json_objects = self._do_get_request("objects/tasks", query_filters)
+        # Then get tasks with expanded objects from tasks
+        parsed_json_tasks = self._do_get_request("tasks", query_filters)
+        
+        if parsed_json_objects and parsed_json_tasks:
+            # Create a mapping of task data by ID
+            tasks_dict = {task['id']: task for task in parsed_json_tasks}
+            
+            # Combine the data
+            combined_tasks = []
+            for obj_task in parsed_json_objects:
+                task_id = obj_task['id']
+                if task_id in tasks_dict:
+                    # Merge the data - use objects/tasks for userfields, tasks for expanded objects
+                    combined_task = {**obj_task}
+                    if 'category' in tasks_dict[task_id]:
+                        combined_task['category'] = tasks_dict[task_id]['category']
+                    if 'assigned_to_user' in tasks_dict[task_id]:
+                        combined_task['assigned_to_user'] = tasks_dict[task_id]['assigned_to_user']
+                    combined_tasks.append(TaskResponse(**combined_task))
+                else:
+                    combined_tasks.append(TaskResponse(**obj_task))
+            
+            return combined_tasks
+        elif parsed_json_objects:
+            return [TaskResponse(**data) for data in parsed_json_objects]
+        elif parsed_json_tasks:
+            return [TaskResponse(**data) for data in parsed_json_tasks]
+        
         return []
+
+    def get_task(self, task_id: int) -> TaskResponse:
+        url = f"objects/tasks/{task_id}"
+        parsed_json = self._do_get_request(url)
+        return TaskResponse(**parsed_json)
+
+    def complete_task(self, task_id: int, done_time: datetime | None = None):
+        url = f"tasks/{task_id}/complete"
+
+        if done_time is None:
+            done_time = datetime.now()
+
+        localized_done_time = localize_datetime(done_time)
+
+        data = {"done_time": grocy_datetime_str(localized_done_time)}
+        self._do_post_request(url, data)
 
     def get_meal_plan(
         self, query_filters: list[str] | None = None

@@ -46,10 +46,10 @@ class Task(DataModel):
         if response.assigned_to_user:
             self._assigned_to_user = User(response.assigned_to_user)
         # Debug: print what we're getting from the response
-        print(f"DEBUG: Task {self._id} userfields from response: {response.userfields}")
+        # print(f"DEBUG: Task {self._id} userfields from response: {response.userfields}")
         # Handle userfields properly - preserve the actual data
         self._userfields = response.userfields or {}
-        print(f"DEBUG: Task {self._id} final userfields: {self._userfields}")
+        # print(f"DEBUG: Task {self._id} final userfields: {self._userfields}")
 
     def get_details(self, api_client: GrocyApiClient):
         details = api_client.get_task(self.id)
